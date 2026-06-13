@@ -11,10 +11,7 @@ The scanner supports hostname resolution, service detection, banner grabbing, re
 * Service detection using well-known port mappings
 * Banner grabbing for identifying running services
 * Per-port response time measurement
-* Progress tracking during large scans
-* Graceful handling of user interruptions (Ctrl+C)
 * Command-line and interactive modes
-* Input validation and error handling
 
 ---
 

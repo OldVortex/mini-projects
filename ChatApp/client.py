@@ -5,10 +5,18 @@ PORT = 5555
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+
 client.connect((HOST, PORT))
 
-message = input("Enter message: ")
+while True:
+    message = input("Enter message: ")
 
-client.send(message.encode())
+    if message.lower() == "quit":
+        break
+    
+    client.send(message.encode())
+
+    reply = client.recv(1024).decode()
+    print("Server:", reply)
 
 client.close()

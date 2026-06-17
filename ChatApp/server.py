@@ -14,9 +14,15 @@ client_socket, client_address = server.accept()
 
 print(f"Connected to {client_address}")
 
-message = client_socket.recv(1024).decode()
+while True:
+    message = client_socket.recv(1024).decode()
+    
+    if not message:
+        break
+    
+    client_socket.send(message.encode())
 
-print(f"Received: {message}")
+    print(f"Client: {message}")
 
 client_socket.close()
 server.close()

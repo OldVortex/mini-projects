@@ -5,6 +5,12 @@ import time
 HOST = "127.0.0.1"
 PORT = 5555
 
+clients = {}
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+server.bind((HOST, PORT))
+server.listen()
+
 def timestamp():
     return time.strftime("%H:%M:%S")
 
@@ -16,11 +22,13 @@ def broadcast(message, sender = None):
             except:
                 pass
 
-clients = {}
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-server.bind((HOST, PORT))
-server.listen()
+def send_private_msg(sender, recipient, message):
+    for client, username in clients.items():
+        if username.lower() == recipient.lower():
+            client.send(f"[PM] {sender}: {message}".encode())
+            return True
+    
+    return False
 
 print(f"\nServer listening on {HOST}:{PORT}\n")
 
@@ -39,6 +47,25 @@ def client_handler(client_socket, client_address):
         
         while True:
             message = client_socket.recv(1024).decode()
+            
+            if message.startswith("/msg"):
+                parts = message.split(" ", 2)
+                
+                if len(parts) < 3:
+                    client_socket.send("Usage: /msg <user> <message>\n".encode())
+                    continue
+            
+                recipient = parts[1]
+                private_msg = parts[2]
+            
+                print(f"[{timestamp()}] [PM] {username} -> {recipient}")
+            
+                success = send_private_msg(username, recipient, private_msg)
+                
+                if not success:
+                    client_socket.send(f"User '{recipient}' not found.".encode())
+                
+                continue
             
             if not message:
                 break

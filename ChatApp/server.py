@@ -8,33 +8,52 @@ PORT = 5555
 def timestamp():
     return time.strftime("%H:%M:%S")
 
+def broadcast(message, sender = None):
+    for client in list(clients):
+        if client != sender:
+            try:
+                client.send(message.encode())
+            except:
+                pass
 
-clients = []
+clients = {}
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 server.bind((HOST, PORT))
 server.listen()
 
-print(f"/nServer listening on {HOST}:{PORT}")
+print(f"\nServer listening on {HOST}:{PORT}\n")
 
 def client_handler(client_socket, client_address):
-    username = client_socket.recv(1024).decode()
-    print(f"/n[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
-    clients.append(client_socket)
     
-    while True:
-        message = client_socket.recv(1024).decode()
+    try:
+        username = client_socket.recv(1024).decode()
         
-        if not message:
-            print(f"/n[{timestamp()}] [DISCONNECTED] {username}")
-            clients.remove(client_socket)
-            break
+        if not username:
+            client_socket.close()
+            return
         
-        print(f"/n[{timestamp()}] [MESSAGE] {username}: {message}")
+        print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
-        client_socket.send(message.encode())
-
-    client_socket.close()
+        clients[client_socket] = username
+        
+        while True:
+            message = client_socket.recv(1024).decode()
+            
+            if not message:
+                break
+            
+            print(f"[{timestamp()}] [MESSAGE] {username}: {message}")
+            
+            broadcast(f"{username}: {message}", sender = client_socket)
+    
+    except ConnectionResetError:
+        pass
+    
+    finally:
+        print(f"[{timestamp()}] [DISCONNECTED] {username}")
+        clients.pop(client_socket, None)
+        client_socket.close()
 
 try:
     while True:
@@ -48,5 +67,5 @@ try:
         thread.start()
 
 except KeyboardInterrupt:
-    print("/nShutting down server....")
+    print("\nShutting down server....")
     server.close()

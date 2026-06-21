@@ -26,7 +26,7 @@ def receive_msg():
 threading.Thread(target = receive_msg, daemon = True).start()
 
 while True:
-    message = input()
+    message = input(f"{username}> ")
     
     if message.lower() == "quit":
         break

@@ -35,9 +35,6 @@ print(f"\nServer listening on {HOST}:{PORT}\n")
 def username_check(username):
     return username.lower() in (name.lower() for name in clients.values())
 
-def list_users():
-    return "\n ".join(clients.values())
-
 def client_handler(client_socket, client_address):
     
     try:
@@ -57,14 +54,15 @@ def client_handler(client_socket, client_address):
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
         clients[client_socket] = username
+        broadcast(f"[SERVER] {username} has joined the chat.")
         
         while True:
             message = client_socket.recv(1024).decode()
             
             if message == "/users":
-                online = list_users()
+                online = "\n".join(f"• {user}" for user in clients.values())
                 client_socket.send(f"Online users:\n{online}".encode())
-                print(f"[{timestamp()} [COMMAND] {username}: /users]")
+                print(f"[{timestamp()} [COMMAND] {username}: /users")
                 continue
             
             if message.startswith("/msg"):
@@ -97,6 +95,7 @@ def client_handler(client_socket, client_address):
         pass
     
     finally:
+        broadcast(f"[SERVER] {username} has left the chat.")
         print(f"[{timestamp()}] [DISCONNECTED] {username}")
         clients.pop(client_socket, None)
         client_socket.close()

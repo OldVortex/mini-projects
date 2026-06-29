@@ -10,6 +10,13 @@ client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))
 client.send(username.encode())
 
+response = client.recv(1024).decode()
+
+if response != "OK":
+    print(response)
+    client.close()
+    exit()
+
 def receive_msg():
     while True:
         try:

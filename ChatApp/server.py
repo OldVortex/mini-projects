@@ -32,6 +32,9 @@ def send_private_msg(sender, recipient, message):
 
 print(f"\nServer listening on {HOST}:{PORT}\n")
 
+def username_check(username):
+    return username.lower() in (name.lower() for name in clients.values())
+
 def client_handler(client_socket, client_address):
     
     try:
@@ -40,6 +43,13 @@ def client_handler(client_socket, client_address):
         if not username:
             client_socket.close()
             return
+        
+        if username_check(username):
+            client_socket.send("Username already taken.".encode())
+            client_socket.close()
+            return
+        
+        client_socket.send("OK".encode())
         
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         

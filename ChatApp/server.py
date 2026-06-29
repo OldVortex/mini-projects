@@ -35,6 +35,9 @@ print(f"\nServer listening on {HOST}:{PORT}\n")
 def username_check(username):
     return username.lower() in (name.lower() for name in clients.values())
 
+def list_users():
+    return "\n ".join(clients.values())
+
 def client_handler(client_socket, client_address):
     
     try:
@@ -57,6 +60,12 @@ def client_handler(client_socket, client_address):
         
         while True:
             message = client_socket.recv(1024).decode()
+            
+            if message == "/users":
+                online = list_users()
+                client_socket.send(f"Online users:\n{online}".encode())
+                print(f"[{timestamp()} [COMMAND] {username}: /users]")
+                continue
             
             if message.startswith("/msg"):
                 parts = message.split(" ", 2)

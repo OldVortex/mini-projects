@@ -35,6 +35,46 @@ print(f"\nServer listening on {HOST}:{PORT}\n")
 def username_check(username):
     return username.lower() in (name.lower() for name in clients.values())
 
+def command_handler(client_socket, username, message):
+    if message == "/users":
+        online = "\n".join(f"• {user}" for user in clients.values())
+        
+        client_socket.send(f"Online users:\n{online}".encode())
+        print(f"[{timestamp()} [COMMAND] {username}: /users")
+        
+        return True
+    
+    if message.startswith("/msg"):
+        parts = message.split(" ", 2)
+        
+        if len(parts) < 3:
+            client_socket.send("Usage: /msg <user> <message>".encode())      
+            return True
+        
+        recipient = parts[1]
+        private_msg = parts[2]
+        
+        print(f"[{timestamp()}] [PM] {username} -> {recipient}")
+        
+        success = send_private_msg(username, recipient, private_msg)
+        
+        if not success:
+            client_socket.send(f"User '{recipient}' not found".encode())
+            
+        return True
+    
+    if message == "/help":
+        help_text = ("Available commands:\n"
+                     "/users - List of users\n"
+                     "/msg <user> <message> - Send private message\n")
+        
+        client_socket.send(help_text.encode())
+        print(f"[{timestamp()}] [COMMAND] {username}: /help")
+        
+        return True
+    
+    return False
+
 def client_handler(client_socket, client_address):
     
     try:
@@ -59,33 +99,8 @@ def client_handler(client_socket, client_address):
         while True:
             message = client_socket.recv(1024).decode()
             
-            if message == "/users":
-                online = "\n".join(f"• {user}" for user in clients.values())
-                client_socket.send(f"Online users:\n{online}".encode())
-                print(f"[{timestamp()} [COMMAND] {username}: /users")
+            if command_handler(client_socket, username, message):
                 continue
-            
-            if message.startswith("/msg"):
-                parts = message.split(" ", 2)
-                
-                if len(parts) < 3:
-                    client_socket.send("Usage: /msg <user> <message>\n".encode())
-                    continue
-            
-                recipient = parts[1]
-                private_msg = parts[2]
-            
-                print(f"[{timestamp()}] [PM] {username} -> {recipient}")
-            
-                success = send_private_msg(username, recipient, private_msg)
-                
-                if not success:
-                    client_socket.send(f"User '{recipient}' not found.".encode())
-                
-                continue
-            
-            if not message:
-                break
             
             print(f"[{timestamp()}] [MESSAGE] {username}: {message}")
             

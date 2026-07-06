@@ -5,6 +5,8 @@ import time
 HOST = "127.0.0.1"
 PORT = 5555
 
+history = []
+
 clients = {}
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -98,6 +100,9 @@ def client_handler(client_socket, client_address):
         
         while True:
             message = client_socket.recv(1024).decode()
+            
+            if not message:
+                break
             
             if command_handler(client_socket, username, message):
                 continue

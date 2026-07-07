@@ -46,7 +46,7 @@ def command_handler(client_socket, username, message):
         
         return True
     
-    if message.startswith("/msg"):
+    if message.startswith("/msg "):
         parts = message.split(" ", 2)
         
         if len(parts) < 3:

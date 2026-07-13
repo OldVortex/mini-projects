@@ -74,7 +74,7 @@ def command_handler(client_socket, username, message):
         print(f"[{timestamp()}] [COMMAND] {username}: /help")
         
         return True
-    
+
     return False
 
 def client_handler(client_socket, client_address):
@@ -95,7 +95,16 @@ def client_handler(client_socket, client_address):
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
         clients[client_socket] = username
+        
         broadcast(f"[{timestamp()}] [SERVER] {username} joined.")
+        
+        if history:
+            client_socket.send("------ Recent Messages -----\n".encode())
+            
+        for msg in history:
+            client_socket.send(f"{msg}\n".encode())
+            
+        client_socket.send("-----------------------------\n".encode())
         
         while True:
             message = client_socket.recv(1024).decode()
@@ -106,9 +115,13 @@ def client_handler(client_socket, client_address):
             if command_handler(client_socket, username, message):
                 continue
             
-            print(f"[{timestamp()}] [MESSAGE] {username}: {message}")
+            formatted = f"[{timestamp()}] [MESSAGE] {username}: {message}"
+            history.append(formatted)
             
-            broadcast(f"{username}: {message}", sender = client_socket)
+            if len(history) > 20:
+                history.pop(0)
+            
+            broadcast(formatted, sender = client_socket)
     
     except ConnectionResetError:
         pass

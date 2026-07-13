@@ -121,13 +121,14 @@ def client_handler(client_socket, client_address):
             if len(history) > 20:
                 history.pop(0)
             
+            print(formatted)
             broadcast(formatted, sender = client_socket)
     
     except ConnectionResetError:
         pass
     
     finally:
-        broadcast(f"[{timestamp()}][SERVER] {username} has left.")
+        broadcast(f"[{timestamp()}] [SERVER] {username} has left.")
         print(f"[{timestamp()}] [DISCONNECTED] {username}")
         clients.pop(client_socket, None)
         client_socket.close()
@@ -145,4 +146,8 @@ try:
 
 except KeyboardInterrupt:
     print("\nShutting down server....")
+    
+    for client in list(clients):
+        client.close()
+        
     server.close()

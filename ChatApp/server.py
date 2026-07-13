@@ -101,10 +101,10 @@ def client_handler(client_socket, client_address):
         if history:
             client_socket.send("------ Recent Messages -----\n".encode())
             
-        for msg in history:
-            client_socket.send(f"{msg}\n".encode())
+            for msg in history:
+                client_socket.send(f"{msg}\n".encode())
             
-        client_socket.send("-----------------------------\n".encode())
+            client_socket.send("-----------------------------\n".encode())
         
         while True:
             message = client_socket.recv(1024).decode()

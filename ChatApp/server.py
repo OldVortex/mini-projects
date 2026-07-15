@@ -20,7 +20,10 @@ def timestamp():
     return time.strftime("%H:%M:%S")
 
 def broadcast(message, sender = None):
-    for client in list(clients):
+    with clients_lock:
+        current_clients = list(clients)
+        
+    for client in current_clients:
         if client != sender:
             try:
                 client.send(message.encode())
@@ -28,7 +31,10 @@ def broadcast(message, sender = None):
                 pass
 
 def send_private_msg(sender, recipient, message):
-    for client, username in clients.items():
+    with clients_lock:
+        current_clients = list(clients.items())
+    
+    for client, username in current_clients:
         if username.lower() == recipient.lower():
             client.send(f"[PM] {sender}: {message}".encode())
             return True
@@ -154,7 +160,10 @@ try:
 except KeyboardInterrupt:
     print("\nShutting down server....")
     
-    for client in list(clients):
+    with clients_lock:
+        current_clients = list(clients)
+    
+    for client in current_clients:
         client.close()
         
     server.close()

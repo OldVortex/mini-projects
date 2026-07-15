@@ -44,11 +44,14 @@ def send_private_msg(sender, recipient, message):
 print(f"\nServer listening on {HOST}:{PORT}\n")
 
 def username_check(username):
-    return username.lower() in (name.lower() for name in clients.values())
+    with clients_lock:
+        return username.lower() in (name.lower() for name in clients.values())
 
 def command_handler(client_socket, username, message):
     if message == "/users":
-        online = "\n".join(f"• {user}" for user in clients.values())
+        with clients_lock:
+            current_clients = list(clients.values())
+            online = "\n".join(f"• {user}" for user in current_clients)
         
         client_socket.send(f"Online users:\n{online}".encode())
         print(f"[{timestamp()}] [COMMAND] {username}: /users")
@@ -108,13 +111,16 @@ def client_handler(client_socket, client_address):
         
         broadcast(f"[{timestamp()}] [SERVER] {username} joined.")
         
-        if history:
+        with history_lock:
+            messages = history.copy()
+            
+        if messages:
             client_socket.send("------ Recent Messages -----\n".encode())
             
-            for msg in history:
+            for msg in messages:
                 client_socket.send(f"{msg}\n".encode())
             
-            client_socket.send("-----------------------------\n".encode())
+            client_socket.send("----------------------------\n".encode())
         
         while True:
             message = client_socket.recv(1024).decode()
@@ -126,10 +132,11 @@ def client_handler(client_socket, client_address):
                 continue
             
             formatted = f"[{timestamp()}] [MESSAGE] {username}: {message}"
-            history.append(formatted)
+            with history_lock:
+                history.append(formatted)
             
-            if len(history) > 20:
-                history.pop(0)
+                if len(history) > 20:
+                    history.pop(0)
             
             print(formatted)
             broadcast(formatted, sender = client_socket)

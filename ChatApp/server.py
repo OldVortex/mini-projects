@@ -6,8 +6,11 @@ HOST = "127.0.0.1"
 PORT = 5555
 
 history = []
-
 clients = {}
+
+clients_lock = threading.lock()
+history_lock = threading.lock()
+
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 server.bind((HOST, PORT))
@@ -94,7 +97,8 @@ def client_handler(client_socket, client_address):
         
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
-        clients[client_socket] = username
+        with clients_lock:
+            clients[client_socket] = username
         
         broadcast(f"[{timestamp()}] [SERVER] {username} joined.")
         
@@ -130,7 +134,10 @@ def client_handler(client_socket, client_address):
     finally:
         broadcast(f"[{timestamp()}] [SERVER] {username} has left.")
         print(f"[{timestamp()}] [DISCONNECTED] {username}")
-        clients.pop(client_socket, None)
+        
+        with clients_lock:
+            clients.pop(client_socket, None)
+        
         client_socket.close()
 
 try:

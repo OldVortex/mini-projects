@@ -8,13 +8,8 @@ PORT = 5555
 history = []
 clients = {}
 
-clients_lock = threading.lock()
-history_lock = threading.lock()
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-server.bind((HOST, PORT))
-server.listen()
+clients_lock = threading.Lock()
+history_lock = threading.Lock()
 
 def timestamp():
     return time.strftime("%H:%M:%S")
@@ -40,12 +35,6 @@ def send_private_msg(sender, recipient, message):
             return True
     
     return False
-
-print(f"\nServer listening on {HOST}:{PORT}\n")
-
-def username_check(username):
-    with clients_lock:
-        return username.lower() in (name.lower() for name in clients.values())
 
 def command_handler(client_socket, username, message):
     if message == "/users":
@@ -90,6 +79,8 @@ def command_handler(client_socket, username, message):
     return False
 
 def client_handler(client_socket, client_address):
+    username = None
+    
     try:
         username = client_socket.recv(1024).decode()
         
@@ -97,17 +88,17 @@ def client_handler(client_socket, client_address):
             client_socket.close()
             return
         
-        if username_check(username):
-            client_socket.send("Username already taken.".encode())
-            client_socket.close()
-            return
+        with clients_lock:
+            if username.lower() in (name.lower() for name in clients.values()):
+                client_socket.send("Username already taken.".encode())
+                client_socket.close()
+                return
+            
+            clients[client_socket] = username
         
         client_socket.send("OK".encode())
         
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
-        
-        with clients_lock:
-            clients[client_socket] = username
         
         broadcast(f"[{timestamp()}] [SERVER] {username} joined.")
         
@@ -115,7 +106,7 @@ def client_handler(client_socket, client_address):
             messages = history.copy()
             
         if messages:
-            client_socket.send("------ Recent Messages -----\n".encode())
+            client_socket.send("\n------ Recent Messages -----\n".encode())
             
             for msg in messages:
                 client_socket.send(f"{msg}\n".encode())
@@ -145,32 +136,45 @@ def client_handler(client_socket, client_address):
         pass
     
     finally:
-        broadcast(f"[{timestamp()}] [SERVER] {username} has left.")
-        print(f"[{timestamp()}] [DISCONNECTED] {username}")
-        
         with clients_lock:
             clients.pop(client_socket, None)
         
         client_socket.close()
-
-try:
-    while True:
-        client_socket, client_address = server.accept()
-    
-        thread = threading.Thread(
-            target = client_handler,
-            args = (client_socket, client_address)
-        )
-
-        thread.start()
-
-except KeyboardInterrupt:
-    print("\nShutting down server....")
-    
-    with clients_lock:
-        current_clients = list(clients)
-    
-    for client in current_clients:
-        client.close()
         
-    server.close()
+        if username:
+            broadcast(f"[{timestamp()}] [SERVER] {username} has left.")
+            print(f"[{timestamp()}] [DISCONNECTED] {username}")
+
+def main():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen()
+    
+    print(f"\nServer listening on {HOST}:{PORT}\n")
+    
+    try:
+        while True:
+            client_socket, client_address = server.accept()
+            
+            thread = threading.Thread(
+                target = client_handler,
+                args = (client_socket, client_address),
+                daemon = True
+            )
+            
+            thread.start()
+    
+    except KeyboardInterrupt:
+        print("\nShutting down server....")
+        
+        with clients_lock:
+            current_clients = list(clients)
+            
+        for client in current_clients:
+            client.close()
+        
+        print("\nServer stopped.")
+        server.close()
+
+if __name__ == "__main__":
+    main()

@@ -8,6 +8,11 @@ PORT = 5555
 history = []
 clients = {}
 
+rooms = {
+    "general",
+    "music"
+}
+
 clients_lock = threading.Lock()
 history_lock = threading.Lock()
 
@@ -29,18 +34,22 @@ def send_private_msg(sender, recipient, message):
     with clients_lock:
         current_clients = list(clients.items())
     
-    for client, username in current_clients:
-        if username.lower() == recipient.lower():
+    for client, info in current_clients:
+        if info["username"].lower() == recipient.lower():
             client.send(f"[PM] {sender}: {message}".encode())
             return True
     
     return False
 
 def command_handler(client_socket, username, message):
+    curr_room = clients[client_socket]["room"]
+    
     if message == "/users":
         with clients_lock:
             current_clients = list(clients.values())
-            online = "\n".join(f"• {user}" for user in current_clients)
+            for info in current_clients:
+                if info["room"] == curr_room:
+                    online = "\n".join(f"• {info["username"]}")
         
         client_socket.send(f"Online users:\n{online}".encode())
         print(f"[{timestamp()}] [COMMAND] {username}: /users")
@@ -94,7 +103,10 @@ def client_handler(client_socket, client_address):
                 client_socket.close()
                 return
             
-            clients[client_socket] = username
+            clients[client_socket] = {
+                "username": username,
+                "room": "general"
+            }
         
         client_socket.send("OK".encode())
         
@@ -104,7 +116,9 @@ def client_handler(client_socket, client_address):
         
         with history_lock:
             messages = history.copy()
-            
+        
+        
+        
         if messages:
             client_socket.send("\n------ Recent Messages -----\n".encode())
             

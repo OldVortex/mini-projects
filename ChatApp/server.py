@@ -47,7 +47,8 @@ def send_private_msg(sender, recipient, message):
     return False
 
 def command_handler(client_socket, username, message):
-    curr_room = clients[client_socket]["room"]
+    with clients_lock:
+        curr_room = clients[client_socket]["room"]
     
     if message == "/users":
         with clients_lock:
@@ -121,11 +122,12 @@ def client_handler(client_socket, client_address):
         
         client_socket.send("OK".encode())
         
-        room = clients[client_socket]['room']
+        with clients_lock:
+            curr_room = clients[client_socket]['room']
         
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
-        broadcast(f"[{timestamp()}] [SERVER] {username} joined.", room)
+        broadcast(f"[{timestamp()}] [SERVER] {username} joined.", curr_room)
         
         with history_lock:
             messages = history.copy()
@@ -141,6 +143,9 @@ def client_handler(client_socket, client_address):
         while True:
             message = client_socket.recv(1024).decode()
             
+            with clients_lock:
+                curr_room = clients[client_socket]['room']
+            
             if not message:
                 break
             
@@ -155,18 +160,20 @@ def client_handler(client_socket, client_address):
                     history.pop(0)
             
             print(formatted)
-            broadcast(formatted, room, sender = client_socket)
+            broadcast(formatted, curr_room, sender = client_socket)
     
     except ConnectionResetError:
         pass
     
     finally:
         with clients_lock:
-            clients.pop(client_socket, None)
+            info = clients.pop(client_socket, None)
+        
+        room = info['room'] if info else None
         
         client_socket.close()
         
-        if username:
+        if username and room:
             broadcast(f"[{timestamp()}] [SERVER] {username} has left.", room)
             print(f"[{timestamp()}] [DISCONNECTED] {username}")
 

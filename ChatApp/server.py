@@ -21,7 +21,7 @@ def timestamp():
 
 def broadcast(message, room, sender = None):
     with clients_lock:
-        current_clients = list(clients)
+        current_clients = list(clients.items())
         
     for client, info in current_clients:
         if client == sender:
@@ -109,7 +109,7 @@ def client_handler(client_socket, client_address):
             return
         
         with clients_lock:
-            if username.lower() in (info["username"].lower() for info in clients.values):
+            if username.lower() in (info["username"].lower() for info in clients.values()):
                 client_socket.send("Username already taken.".encode())
                 client_socket.close()
                 return
@@ -121,14 +121,14 @@ def client_handler(client_socket, client_address):
         
         client_socket.send("OK".encode())
         
+        room = clients[client_socket]['room']
+        
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
-        broadcast(f"[{timestamp()}] [SERVER] {username} joined.", room = "general")
+        broadcast(f"[{timestamp()}] [SERVER] {username} joined.", room)
         
         with history_lock:
             messages = history.copy()
-        
-        
         
         if messages:
             client_socket.send("\n------ Recent Messages -----\n".encode())
@@ -155,7 +155,7 @@ def client_handler(client_socket, client_address):
                     history.pop(0)
             
             print(formatted)
-            broadcast(formatted, sender = client_socket)
+            broadcast(formatted, room, sender = client_socket)
     
     except ConnectionResetError:
         pass
@@ -167,7 +167,7 @@ def client_handler(client_socket, client_address):
         client_socket.close()
         
         if username:
-            broadcast(f"[{timestamp()}] [SERVER] {username} has left.", room = "general")
+            broadcast(f"[{timestamp()}] [SERVER] {username} has left.", room)
             print(f"[{timestamp()}] [DISCONNECTED] {username}")
 
 def main():

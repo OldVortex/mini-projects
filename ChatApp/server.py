@@ -19,16 +19,21 @@ history_lock = threading.Lock()
 def timestamp():
     return time.strftime("%H:%M:%S")
 
-def broadcast(message, sender = None):
+def broadcast(message, room, sender = None):
     with clients_lock:
         current_clients = list(clients)
         
-    for client in current_clients:
-        if client != sender:
-            try:
-                client.send(message.encode())
-            except:
-                pass
+    for client, info in current_clients:
+        if client == sender:
+            continue
+        
+        if info['room'] != room:
+            continue
+            
+        try:
+            client.send(message.encode())
+        except:
+            pass
 
 def send_private_msg(sender, recipient, message):
     with clients_lock:
@@ -47,9 +52,14 @@ def command_handler(client_socket, username, message):
     if message == "/users":
         with clients_lock:
             current_clients = list(clients.values())
+            
+            online = []
+            
             for info in current_clients:
-                if info["room"] == curr_room:
-                    online = "\n".join(f"• {info["username"]}")
+                if info['room'] == curr_room:
+                    online.append(f"• {info['username']}")
+            
+            online = "\n".join(online)
         
         client_socket.send(f"Online users:\n{online}".encode())
         print(f"[{timestamp()}] [COMMAND] {username}: /users")
@@ -91,6 +101,7 @@ def client_handler(client_socket, client_address):
     username = None
     
     try:
+        #Username Check
         username = client_socket.recv(1024).decode()
         
         if not username:
@@ -98,7 +109,7 @@ def client_handler(client_socket, client_address):
             return
         
         with clients_lock:
-            if username.lower() in (name.lower() for name in clients.values()):
+            if username.lower() in (info["username"].lower() for info in clients.values):
                 client_socket.send("Username already taken.".encode())
                 client_socket.close()
                 return
@@ -112,7 +123,7 @@ def client_handler(client_socket, client_address):
         
         print(f"[{timestamp()}] [CONNECTED] {username} ({client_address[0]}:{client_address[1]})")
         
-        broadcast(f"[{timestamp()}] [SERVER] {username} joined.")
+        broadcast(f"[{timestamp()}] [SERVER] {username} joined.", room = "general")
         
         with history_lock:
             messages = history.copy()
@@ -156,7 +167,7 @@ def client_handler(client_socket, client_address):
         client_socket.close()
         
         if username:
-            broadcast(f"[{timestamp()}] [SERVER] {username} has left.")
+            broadcast(f"[{timestamp()}] [SERVER] {username} has left.", room = "general")
             print(f"[{timestamp()}] [DISCONNECTED] {username}")
 
 def main():

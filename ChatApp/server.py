@@ -95,6 +95,21 @@ def command_handler(client_socket, username, message):
         print(f"[{timestamp()}] [COMMAND] {username}: /help")
         
         return True
+    
+    if message.startswith("/join "):
+        parts = message.split(maxsplit = 1)
+        
+        if len(parts) < 2:
+            client_socket.send("Usage: /join <room name>".encode())
+            return True
+        
+        room = parts[1].lower()
+        
+        if room not in rooms:
+            client_socket.send("Room does not exist.".encode())
+            return True
+            
+    
 
     return False
 

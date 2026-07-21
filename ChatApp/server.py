@@ -109,7 +109,26 @@ def command_handler(client_socket, username, message):
             client_socket.send("Room does not exist.".encode())
             return True
             
-    
+                
+        with clients_lock:
+            prev_room = clients[client_socket]['room']
+            
+        if room == prev_room:
+            client_socket.send("You are already in that room.".encode())
+            return True
+        
+        broadcast(f"[SERVER] {username} has left '{prev_room}'.", prev_room, sender = client_socket)
+        
+        with clients_lock:
+            clients[client_socket]['room'] = room
+        
+        broadcast(f"[SERVER] {username} has joined '{room}'.", room, sender = client_socket)
+        
+        client_socket.send(f"You have joined '{room}'.\n".encode())
+        
+        print(f"[{timestamp()}] [ROOM] {username}: {prev_room} -> {room}")
+        
+        return True
 
     return False
 

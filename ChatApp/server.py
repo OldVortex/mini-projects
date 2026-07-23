@@ -67,6 +67,28 @@ def command_handler(client_socket, username, message):
         
         return True
     
+    if message == "/help":
+        help_text = ("Available commands:\n"
+                    "/users - List of users\n"
+                    "/msg <user> <message> - Send private message\n"
+                    "/join <room> - Join a room of choice\n"
+                    "/rooms - List of rooms\n")
+        
+        client_socket.send(help_text.encode())
+        print(f"[{timestamp()}] [COMMAND] {username}: /help")
+        
+        return True
+    
+    if message == "/rooms":
+        room_text = ("Available rooms:\n"
+                     "• general\n"
+                     "• music\n")
+        
+        client_socket.send(room_text.encode())
+        print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
+        
+        return True
+    
     if message.startswith("/msg "):
         parts = message.split(" ", 2)
         
@@ -86,21 +108,11 @@ def command_handler(client_socket, username, message):
             
         return True
     
-    if message == "/help":
-        help_text = ("Available commands:\n"
-                     "/users - List of users\n"
-                     "/msg <user> <message> - Send private message\n")
-        
-        client_socket.send(help_text.encode())
-        print(f"[{timestamp()}] [COMMAND] {username}: /help")
-        
-        return True
-    
     if message.startswith("/join "):
         parts = message.split(maxsplit = 1)
         
         if len(parts) < 2:
-            client_socket.send("Usage: /join <room name>".encode())
+            client_socket.send("Usage: /join <room>".encode())
             return True
         
         room = parts[1].lower()
@@ -109,7 +121,6 @@ def command_handler(client_socket, username, message):
             client_socket.send("Room does not exist.".encode())
             return True
             
-                
         with clients_lock:
             prev_room = clients[client_socket]['room']
             

@@ -80,11 +80,9 @@ def command_handler(client_socket, username, message):
         return True
     
     if message == "/rooms":
-        room_text = ("Available rooms:\n"
-                     "• general\n"
-                     "• music\n")
+        room_list = "\n".join(f"• {room}" for room in sorted(rooms))
         
-        client_socket.send(room_text.encode())
+        client_socket.send(f"Available rooms:\n{room_list}".encode())
         print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
         
         return True

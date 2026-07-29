@@ -5,13 +5,25 @@ import time
 HOST = "127.0.0.1"
 PORT = 5555
 
-history = []
-clients = {}
+COMMANDS = {
+    "/users": "Show online users in the room",
+    "/msg <user> <message>": "Send a private message to the user",
+    "/rooms": "Show available chat rooms to join",
+    "/join <room>": "Join the chat room",
+    "/help": "Show list of commands"
+}
 
 rooms = {
     "general",
     "music"
 }
+
+history = {
+    room: []
+    for room in rooms
+}
+
+clients = {}
 
 clients_lock = threading.Lock()
 history_lock = threading.Lock()
@@ -68,12 +80,11 @@ def command_handler(client_socket, username, message):
         return True
     
     if message == "/help":
-        help_text = ("Available commands:\n"
-                    "/users - List of users\n"
-                    "/msg <user> <message> - Send private message\n"
-                    "/join <room> - Join a room of choice\n"
-                    "/rooms - List of rooms\n")
+        help_text = "Available commands:\n"
         
+        for command, description in COMMANDS.items():
+            help_text += f"{command}: {description}\n"
+             
         client_socket.send(help_text.encode())
         print(f"[{timestamp()}] [COMMAND] {username}: /help")
         

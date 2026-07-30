@@ -8,6 +8,7 @@ PORT = 5555
 COMMANDS = {
     "/users": "Show online users in the room",
     "/msg <user> <message>": "Send a private message to the user",
+    "/room": "Show current room",
     "/rooms": "Show available chat rooms to join",
     "/join <room>": "Join the chat room",
     "/help": "Show list of commands"
@@ -27,6 +28,13 @@ clients = {}
 
 clients_lock = threading.Lock()
 history_lock = threading.Lock()
+
+def add_history(room, message):
+    with history_lock:
+        history[room].append(message)
+        
+        if len(history[room]) > 20:
+            history[room].pop(0)
 
 def timestamp():
     return time.strftime("%H:%M:%S")
@@ -57,6 +65,7 @@ def send_private_msg(sender, recipient, message):
             return True
     
     return False
+
 
 def command_handler(client_socket, username, message):
     with clients_lock:
@@ -184,7 +193,7 @@ def client_handler(client_socket, client_address):
         broadcast(f"[{timestamp()}] [SERVER] {username} joined.", curr_room)
         
         with history_lock:
-            messages = history.copy()
+            messages = history[curr_room].copy()
         
         if messages:
             client_socket.send("\n------ Recent Messages -----\n".encode())
@@ -207,12 +216,8 @@ def client_handler(client_socket, client_address):
                 continue
             
             formatted = f"[{timestamp()}] [MESSAGE] {username}: {message}"
-            with history_lock:
-                history.append(formatted)
             
-                if len(history) > 20:
-                    history.pop(0)
-            
+            add_history(curr_room, formatted)
             print(formatted)
             broadcast(formatted, curr_room, sender = client_socket)
     

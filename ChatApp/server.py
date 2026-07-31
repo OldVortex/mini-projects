@@ -66,46 +66,83 @@ def send_private_msg(sender, recipient, message):
     
     return False
 
-
-def command_handler(client_socket, username, message):
-    with clients_lock:
-        curr_room = clients[client_socket]["room"]
+def cmd_help(client_socket, username):
+    help_text = "Available commands:\n"
     
-    if message == "/users":
-        with clients_lock:
-            current_clients = list(clients.values())
-            
-            online = []
-            
-            for info in current_clients:
-                if info['room'] == curr_room:
-                    online.append(f"• {info['username']}")
-            
-            online = "\n".join(online)
-        
-        client_socket.send(f"Online users:\n{online}".encode())
-        print(f"[{timestamp()}] [COMMAND] {username}: /users")
-        
+    for command, description in COMMANDS.items():
+        help_text += f"{command}: {description}\n"
+    
+    client_socket.send(help_text.encode())
+    print(f"[{timestamp()}] [COMMAND] {username}: /help")
+    
+    return True
+    
+def cmd_users(client_socket, username):
+    with clients_lock:
+        curr_room = clients[client_socket]['room']
+        current_clients = list(clients.values())
+    
+    online = []
+    
+    for info in current_clients:
+        if info['room'] == curr_room:
+            online.append(f"• {info['username']}")
+    
+    online = "\n".join(online)
+    
+    client_socket.send(f"Online users:\n{online}".encode())
+    print(f"[{timestamp()}] [COMMAND] {username}: /users")
+    
+    return True
+    
+def cmd_rooms(client_socket, username):
+    room_list = "\n".join(f"• {room}" for room in sorted(rooms))
+    
+    client_socket.send(f"Available rooms: \n{room_list}".encode())
+    print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
+    
+    return True
+    
+def cmd_room(client_socket, username):
+    
+def cmd_join(client_socket, username, parts):
+    if len(parts) < 2:
+        client_socket.send("Usage: /join <room>".encode())
         return True
+    
+    room = parts[1].lower()
+    
+    if room not in rooms:
+        client_socket.send("Room does not exist.".encode())
+        return True
+    
+    with clients_lock:
+        prev_room = clients[client_socket]['room']
+        
+    if room == prev_room:
+        client_socket.send("You are already in this room.".encode())
+        return True
+    
+    broadcast(f"[SERVER] {username} has left '{room}'.", room, sender = client_socket)
+    
+    with clients_lock:
+        clients[client_socket]['room'] = room
+        
+    broadcast(f"[SERVER] {username} has joined '{room}'.", room, sender = client_socket)
+    client_socket.send(f"You have joined '{room}'.\n".encode())
+    print(f"[{timestamp()}] [ROOM] {username}: {prev_room} -> {room}")
+            
+    return True
+
+def command_handler(client_socket, username, message):    
+    if message == "/users":
+        return cmd_users
     
     if message == "/help":
-        help_text = "Available commands:\n"
-        
-        for command, description in COMMANDS.items():
-            help_text += f"{command}: {description}\n"
-             
-        client_socket.send(help_text.encode())
-        print(f"[{timestamp()}] [COMMAND] {username}: /help")
-        
-        return True
+        return cmd_help(client_socket, username)
     
     if message == "/rooms":
-        room_list = "\n".join(f"• {room}" for room in sorted(rooms))
-        
-        client_socket.send(f"Available rooms:\n{room_list}".encode())
-        print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
-        
-        return True
+        return cmd_rooms(client_socket, username)
     
     if message.startswith("/msg "):
         parts = message.split(" ", 2)
@@ -128,37 +165,8 @@ def command_handler(client_socket, username, message):
     
     if message.startswith("/join "):
         parts = message.split(maxsplit = 1)
-        
-        if len(parts) < 2:
-            client_socket.send("Usage: /join <room>".encode())
-            return True
-        
-        room = parts[1].lower()
-        
-        if room not in rooms:
-            client_socket.send("Room does not exist.".encode())
-            return True
-            
-        with clients_lock:
-            prev_room = clients[client_socket]['room']
-            
-        if room == prev_room:
-            client_socket.send("You are already in that room.".encode())
-            return True
-        
-        broadcast(f"[SERVER] {username} has left '{prev_room}'.", prev_room, sender = client_socket)
-        
-        with clients_lock:
-            clients[client_socket]['room'] = room
-        
-        broadcast(f"[SERVER] {username} has joined '{room}'.", room, sender = client_socket)
-        
-        client_socket.send(f"You have joined '{room}'.\n".encode())
-        
-        print(f"[{timestamp()}] [ROOM] {username}: {prev_room} -> {room}")
-        
-        return True
-
+        return cmd_join(client_socket, username, parts)
+    
     return False
 
 def client_handler(client_socket, client_address):

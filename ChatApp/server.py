@@ -107,7 +107,9 @@ def cmd_room(client_socket, username):
     room = clients[client_socket]['room']
     
     client_socket.send(f"Current room: {room}".encode())
-    print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
+    print(f"[{timestamp()}] [COMMAND] {username}: /room")
+    
+    return True
     
 def cmd_join(client_socket, username, parts):
     if len(parts) < 2:
@@ -127,7 +129,7 @@ def cmd_join(client_socket, username, parts):
         client_socket.send("You are already in this room.".encode())
         return True
     
-    broadcast(f"[SERVER] {username} has left '{room}'.", room, sender = client_socket)
+    broadcast(f"[SERVER] {username} has left '{prev_room}'.", prev_room, sender = client_socket)
     
     with clients_lock:
         clients[client_socket]['room'] = room
@@ -156,7 +158,7 @@ def cmd_msg(client_socket, username, parts):
 
 def command_handler(client_socket, username, message):    
     if message == "/users":
-        return cmd_users
+        return cmd_users(client_socket, username)
     
     if message == "/help":
         return cmd_help(client_socket, username)

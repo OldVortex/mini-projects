@@ -104,6 +104,10 @@ def cmd_rooms(client_socket, username):
     return True
     
 def cmd_room(client_socket, username):
+    room = clients[client_socket]['room']
+    
+    client_socket.send(f"Current room: {room}".encode())
+    print(f"[{timestamp()}] [COMMAND] {username}: /rooms")
     
 def cmd_join(client_socket, username, parts):
     if len(parts) < 2:
@@ -159,6 +163,9 @@ def command_handler(client_socket, username, message):
     
     if message == "/rooms":
         return cmd_rooms(client_socket, username)
+    
+    if message == "/room":
+        return cmd_room(client_socket, username)
     
     if message.startswith("/msg "):
         parts = message.split(" ", 2)

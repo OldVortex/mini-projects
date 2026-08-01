@@ -61,7 +61,7 @@ def send_private_msg(sender, recipient, message):
     
     for client, info in current_clients:
         if info["username"].lower() == recipient.lower():
-            client.send(f"[PM] {sender}: {message}".encode())
+            client.send(f"[{timestamp()}] [PM] {sender}: {message}".encode())
             return True
     
     return False
@@ -134,6 +134,22 @@ def cmd_join(client_socket, username, parts):
             
     return True
 
+def cmd_msg(client_socket, username, parts):
+    if len(parts) < 3:
+        client_socket.send("Usage: /msg <user> <message>". encode())
+        return True
+    
+    recipient = parts[1]
+    private_msg = parts[2]
+    
+    print(f"[{timestamp()}] [PM] {username} -> {recipient}")
+    
+    success = send_private_msg(username, recipient, private_msg)
+    if not success:
+        client_socket.send(f"User '{recipient}' not found".encode())
+    
+    return True
+
 def command_handler(client_socket, username, message):    
     if message == "/users":
         return cmd_users
@@ -146,22 +162,7 @@ def command_handler(client_socket, username, message):
     
     if message.startswith("/msg "):
         parts = message.split(" ", 2)
-        
-        if len(parts) < 3:
-            client_socket.send("Usage: /msg <user> <message>".encode())      
-            return True
-        
-        recipient = parts[1]
-        private_msg = parts[2]
-        
-        print(f"[{timestamp()}] [PM] {username} -> {recipient}")
-        
-        success = send_private_msg(username, recipient, private_msg)
-        
-        if not success:
-            client_socket.send(f"User '{recipient}' not found".encode())
-            
-        return True
+        return cmd_msg(client_socket, username, parts)
     
     if message.startswith("/join "):
         parts = message.split(maxsplit = 1)

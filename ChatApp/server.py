@@ -52,7 +52,7 @@ def broadcast(message, room, sender = None):
             
         try:
             client.send(message.encode())
-        except:
+        except OSError:
             pass
 
 def send_private_msg(sender, recipient, message):
@@ -90,7 +90,7 @@ def cmd_users(client_socket, username):
     
     online = "\n".join(online)
     
-    client_socket.send(f"Online users:\n{online}".encode())
+    client_socket.send(f"Online users in {curr_room}:\n{online}".encode())
     print(f"[{timestamp()}] [COMMAND] {username}: /users")
     
     return True
@@ -104,7 +104,8 @@ def cmd_rooms(client_socket, username):
     return True
     
 def cmd_room(client_socket, username):
-    room = clients[client_socket]['room']
+    with clients_lock:
+        room = clients[client_socket]['room']
     
     client_socket.send(f"Current room: {room}".encode())
     print(f"[{timestamp()}] [COMMAND] {username}: /room")
@@ -134,7 +135,18 @@ def cmd_join(client_socket, username, parts):
     with clients_lock:
         clients[client_socket]['room'] = room
         
-    broadcast(f"[SERVER] {username} has joined '{room}'.", room, sender = client_socket)
+    with history_lock:
+        messages = history[room].copy()
+        
+    if messages:
+        client_socket.send("\n------ Recent Messages ------\n".encode())
+        
+        for msg in messages:
+            client_socket.send(f"{msg}\n".encode())
+        
+        client_socket.send("-----------------------------\n".encode())
+        
+    broadcast(f"[{timestamp()}] [SERVER] {username} has joined '{room}'.", room, sender = client_socket)
     client_socket.send(f"You have joined '{room}'.\n".encode())
     print(f"[{timestamp()}] [ROOM] {username}: {prev_room} -> {room}")
             
@@ -176,6 +188,10 @@ def command_handler(client_socket, username, message):
     if message.startswith("/join "):
         parts = message.split(maxsplit = 1)
         return cmd_join(client_socket, username, parts)
+    
+    if message.startswith("/"):
+        client_socket.send("Unknown command. Type /help for list of commands".encode())
+        return True
     
     return False
 

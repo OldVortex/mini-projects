@@ -14,10 +14,10 @@ COMMANDS = {
     "/help": "Show list of commands"
 }
 
-rooms = {
+rooms = [
     "general",
     "music"
-}
+]
 
 history = {
     room: []
@@ -61,7 +61,12 @@ def send_private_msg(sender, recipient, message):
     
     for client, info in current_clients:
         if info["username"].lower() == recipient.lower():
-            client.send(f"[{timestamp()}] [PM] {sender}: {message}".encode())
+            try:
+                client.send(f"[{timestamp()}] [PM] {sender}: {message}".encode())
+            
+            except OSError:
+                return False
+            
             return True
     
     return False
@@ -190,7 +195,7 @@ def command_handler(client_socket, username, message):
         return cmd_join(client_socket, username, parts)
     
     if message.startswith("/"):
-        client_socket.send("Unknown command. Type /help for list of commands".encode())
+        client_socket.send("Unknown command. Type /help for list of commands\n".encode())
         return True
     
     return False
